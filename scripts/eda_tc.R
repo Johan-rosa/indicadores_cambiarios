@@ -3,8 +3,9 @@ library(tidyr)
 library(ggplot2)
 library(lubridate)
 library(highcharter)
+library(logger)
 
-box::use(scripts / logic / get_tc[get_tc_spot])
+source(here::here("scripts/logic/get_tc.R"))
 
 tc_mensual_fp <- get_tc_spot(frecuencia = "mensual", average_or_fp = "fp")
 tc_mensual_prom <- get_tc_spot(frecuencia = "mensual", average_or_fp = "average")
@@ -32,10 +33,11 @@ tc_to_plot <- tc_diario |>
     .by = year
   )
 
-tc_before_covid <- tc_to_plot |>
-  filter(year > 2010, year < 2020)
 
-tc_to_plot |>
+# -------------------------------------------------------------------------
+log_info("Tipo de cambio de compra y venta del mercado spot")
+
+plot_tc_spot <- tc_to_plot |>
   filter(year > 2024) |>
   select(fecha, compra, venta) |>
   pivot_longer(-fecha, names_to = "type", values_to = "tasa") |>
@@ -54,7 +56,11 @@ tc_to_plot |>
   ) |>
   hc_title(text = "Tasa de cambio del mercado spot")
 
-tc_mensual_prom |>
+
+# -------------------------------------------------------------------------
+log_info("Margen cambiario promedio")
+
+plot_margen_promedio <- tc_mensual_prom |>
   mutate(
     marge = (venta - compra) / venta,
     date_label = format(fecha, "%b %Y")
@@ -78,7 +84,11 @@ tc_mensual_prom |>
   hc_title(text = "Margen cambiario promedio") |>
   hc_xAxis(title = list(text = NA))
 
-tc_to_plot |>
+
+# -------------------------------------------------------------------------
+log_info("Tasa de cambio acumulada en lo que va de año, según día laborable")
+
+tasa_acumulada <- tc_to_plot |>
   # Para asegurar que se están graficando los últimos 4 años
   filter(year > (max(as.numeric(year)) - 4)) |>
   mutate(date_label = format(fecha, "%d %b")) |>
@@ -117,101 +127,3 @@ tc_to_plot |>
     )
   ) |>
   hc_title(text = "Variación acumulada del tipo de cambio de venta, según año")
-
-
-tc_to_plot |>
-  mutate(margen = venta - compra) |>
-  select(fecha, year, mes, compra, venta, margen) |>
-  filter(year > 2010) |>
-  summarise(
-    year_mes = max(round_date(fecha, unit = "month")),
-    venta = mean(venta),
-    margen_min = min(margen),
-    margen_max = max(margen),
-    margen = mean(margen),
-    .by = c(year, mes)
-  ) |>
-  mutate(
-    across(where(is.numeric), \(x) round(x, 3))
-  ) |>
-  hchart(
-    type = "arearange",
-    hcaes(
-      x = year_mes,
-      low = margen_min,
-      high = margen_max,
-    ),
-    name = "Rango"
-  )
-
-
-
-mg_dt <- tc_to_plot |>
-  mutate(margen = venta - compra) |>
-  select(fecha, year, mes, compra, venta, margen) |>
-  filter(year > 2010) |>
-  summarise(
-    year_mes = max(round_date(fecha, unit = "month")),
-    venta = mean(venta),
-    margen_min = min(margen),
-    margen_max = max(margen),
-    margen = mean(margen),
-    .by = c(year, mes)
-  ) |>
-  mutate(
-    across(where(is.numeric), \(x) round(x, 3))
-  )
-
-
-
-highchart() |>
-  # Arearange
-  hc_add_series(
-    type = "arearange",
-    data = mg_dt,
-    hcaes(x = year_mes, low = margen_min, high = margen_max),
-    name = "Rango",
-    color = "#a8dadc",
-    fillOpacity = 0.3
-  ) |>
-  # Línea promedio
-  hc_add_series(
-    type = "line",
-    data = mg_dt,
-    hcaes(x = year_mes, y = margen),
-    name = "Margen promedio",
-    color = "#1d3557",
-    marker = list(enabled = FALSE)
-  )
-
-tc_to_plot |>
-  mutate(margen = venta - compra) |>
-  select(fecha, year, mes, compra, venta, margen) |>
-  filter(year > 2010) |>
-  summarise(
-    year_mes = max(round_date(fecha, unit = "month")),
-    venta = mean(venta),
-    margen_min = min(margen),
-    margen_max = max(margen),
-    margen = mean(margen),
-    .by = c(year, mes)
-  ) |>
-  mutate(across(contains("margen"), \(x) x / venta)) |>
-  ggplot(aes(x = year_mes, y = margen)) +
-  geom_ribbon(
-    aes(ymin = margen_min, ymax = margen_max, fill = "Volatilidad mensual")
-  ) +
-  geom_line(color = "#e63946", size = 1) +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom"
-  ) +
-  scale_y_continuous(label = scales::percent) +
-  scale_fill_manual(values = "gray") +
-  labs(
-    title = "Margen cambiario promedio como porcentaje de la tasa de venta",
-    subtitle = "Frecuencia mensual, 2010 - 2025",
-    fill = NULL,
-    x = NULL,
-    y =  NULL
-  )
