@@ -1,31 +1,71 @@
 ---
 title: "Indicadores del Mercado Cambiario Dominicano"
-format: html
+format: 
+  html:
+    page-layout: full
+execute:
+  echo: false
+  message: false
+  warning: false
+  fig-height: 4
 ---
 
+----
+
 ```{r setup}
-#| echo: false
-#| message: false
-#| warning: false
 
 options(box.path = here::here())
 source(here::here("scripts/eda_tc.R"))
 ```
 
+
+::: {.grid}
+::: {.g-col-md-6 .g-col-12}
+
 ```{r "TC marcado spot"}
-#| echo: false
- 
 plot_tc_spot
 ```
 
-```{r "Margen promedio"}
-#| echo: false
- 
-plot_margen_promedio
-```
+:::
 
+::: {.g-col-md-6 .g-col-12}
 ```{r "Variacion acumulada"}
-#| echo: false
  
 tasa_acumulada
 ```
+:::
+
+::: {.g-col-md-6 .g-col-12}
+```{r "Margen promedio"}
+#| fig-height: 3
+
+plot_margen_promedio
+```
+:::
+
+
+::: {.g-col-md-6 .g-col-12}
+
+### Tasas en los principales bancos
+
+```{r "Table tc bancos"}
+tabla_tc
+```
+:::
+
+:::
+
+<style>
+  h1 {
+    text-align: center;
+  }
+  h3 {
+    color: #333333;
+    font-size: 18px;
+    font-weight: 400;
+    text-align: center;
+    fill: #333333;
+    margin: 5px 0 10px 0;
+  }
+</style>
+

@@ -4,6 +4,7 @@ library(ggplot2)
 library(lubridate)
 library(highcharter)
 library(logger)
+library(reactable)
 
 source(here::here("scripts/logic/get_tc.R"))
 
@@ -65,7 +66,7 @@ plot_margen_promedio <- tc_mensual_prom |>
     marge = (venta - compra) / venta,
     date_label = format(fecha, "%b %Y")
   ) |>
-  filter(year >= 2020) |>
+  filter(year >= 2023) |>
   hchart(type = "column", hcaes(x = fecha, y = marge, date_label = date_label), name = "Margen") |>
   hc_tooltip(
     formatter = JS(
@@ -126,4 +127,61 @@ tasa_acumulada <- tc_to_plot |>
        }"
     )
   ) |>
-  hc_title(text = "Variación acumulada del tipo de cambio de venta, según año")
+  hc_title(text = "Variación acumulada del tipo de cambio de venta")
+
+# Table cambiaria ---------------------------------------------------------
+
+accuracy <- 0.01
+
+table_data <- get_tc_from_banks() |>
+  filter_out(stringr::str_detect(tipo, "Sucur")) |>
+  filter(date == max(date)) |>
+  filter(
+    bank %in% c("BHD", "Banco Popular", "Banreservas", "Scotiabank")
+  ) |>
+  select(-c(tipo, date)) |>
+  mutate(marge = sell - buy)
+
+
+imgs <- tibble(
+  bank = c(
+    "BHD",
+    "Banco Popular",
+    "Banreservas",
+    "Scotiabank"
+  ),
+  img = c(
+    "https://www.infodolar.com.do/images/entidades/banco-bhd-2x.png",
+    "https://popularenlinea.com/_catalogs/masterpage/popularenlinea/shared/images/BPD-logo.png",
+    "https://www.infodolar.com.do/images/entidades/banreservas.svg",
+    "https://do.scotiabank.com/content/dam/scotiabank/images/logos/2019/scotiabank-logo-red-desktop-200px.svg"
+  ),
+  h = c(rep(25, 3), 14)
+)
+
+
+tabla_tc <- imgs |>
+  select(-h) |>
+  left_join(table_data, by = "bank") |>
+  relocate(sell, .before = buy) |>
+  reactable(
+    columns = list(
+      img = colDef(
+        name = "",
+        cell = function(value, i) {
+          htmltools::img(src = value, style = glue::glue("height: {imgs$h[i]}px;"), alt = value)
+        }
+      ),
+      bank  = colDef(name = "Entidad", show = FALSE),
+      sell  = colDef(name = "Tasa de venta", cell = \(x) scales::comma(x, accuracy)),
+      buy   = colDef(name = "Tasa de compra", cell = \(x) scales::comma(x, accuracy)),
+      marge = colDef(name = "Margen", cell = \(x) scales::comma(x, accuracy))
+    )
+  )
+
+
+
+
+
+
+
