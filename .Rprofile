@@ -1,3 +1,4 @@
+source("renv/activate.R")
 if (require("here", quietly = TRUE)) {
   options(box.path = here())
 }
