@@ -6,7 +6,7 @@ on:
 name: Render report
 
 jobs:
-  webscraping:
+  rendering:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
